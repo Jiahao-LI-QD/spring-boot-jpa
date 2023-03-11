@@ -1,9 +1,13 @@
 package com.example.demo;
 
+import com.github.javafaker.Faker;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
@@ -17,47 +21,36 @@ public class Application {
     @Bean
     CommandLineRunner commandLineRunner(StudentRepository studentRepository) {
         return args -> {
-            Student maria = new Student(
-                    "Maria",
-                    "Jones",
-                    "maria.jones@amigoscode.com",
-                    21
-            );
-            Student maria2 = new Student(
-                    "Maria",
-                    "Jones",
-                    "maria.jones1@amigoscode.com",
-                    23
-            );
-            Student ahmed = new Student(
-                    "Ahmed",
-                    "Ali",
-                    "ahmed.ali@amigoscode.edu",
-                    21
-            );
+            generateRandomStudent(studentRepository);
 
-            studentRepository.saveAll(List.of(maria, maria2, ahmed));
+            PageRequest pageRequest = PageRequest.of(0, 5, Sort.by("firstName").ascending());
+            Page<Student> page = studentRepository.findAll(pageRequest);
+            page.forEach(student -> System.out.println(student));
 
-            studentRepository
-                    .findStudentByEmail("admed.ali@amigoscode.edu")
-                    .ifPresentOrElse(
-                            System.out::println,
-                            () -> System.out.println("does not exist")
-                    );
-
-            studentRepository
-                    .findStudentsByFirstNameEqualsAndAgeIsGreaterThan(
-                            "Maria", 21)
-                    .forEach(System.out::println);
-
-            studentRepository
-                    .selectStudentByFirstNameAndAge(
-                            "Maria", 21
-                    ).forEach(System.out::println);
-
-            System.out.println(studentRepository
-                    .deleteStudentById(3L));
         };
+    }
+
+    private static void sortAndPrint(StudentRepository studentRepository) {
+        Sort sort = Sort.by(Sort.Direction.ASC, "firstName").and(Sort.by("age").descending());
+        studentRepository.findAll(sort)
+                .forEach(student -> System.out.println(student.getFirstName()));
+    }
+
+    private static void generateRandomStudent(StudentRepository studentRepository) {
+        Faker faker = new Faker();
+        for (int i = 0; i < 20; i ++){
+            String firstName = faker.name().firstName();
+            String lastName = faker.name().lastName();
+            String email = String.format("%s.%s@amigoscode.edu", firstName, lastName);
+            Integer age = faker.number().numberBetween(17, 55);
+            Student student = new Student(
+                    firstName,
+                    lastName,
+                    email,
+                    age
+            );
+            studentRepository.save(student);
+        }
     }
 
 }
