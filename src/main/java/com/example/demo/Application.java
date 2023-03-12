@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @SpringBootApplication
@@ -19,22 +20,56 @@ public class Application {
     }
 
     @Bean
-    CommandLineRunner commandLineRunner(StudentRepository studentRepository) {
+    CommandLineRunner commandLineRunner(
+            StudentRepository studentRepository) {
         return args -> {
-            generateRandomStudent(studentRepository);
+            Faker faker = new Faker();
+            String firstName = faker.name().firstName();
+            String lastName = faker.name().lastName();
+            String email = String.format("%s.%s@amigoscode.edu", firstName, lastName);
+            Integer age = faker.number().numberBetween(17, 55);
+            Student student = new Student(
+                    firstName,
+                    lastName,
+                    email,
+                    age
+            );
+            StudentIdCard studentIdCard = new StudentIdCard("123456789", student);
+            student.addBook(new Book("Clean Code", LocalDateTime.now().minusDays(4)));
+            student.addBook(new Book("Spring Boot", LocalDateTime.now().minusDays(23)));
+            student.addBook(new Book("Spring JPA", LocalDateTime.now().minusYears(2)));
 
-            PageRequest pageRequest = PageRequest.of(0, 5, Sort.by("firstName").ascending());
-            Page<Student> page = studentRepository.findAll(pageRequest);
-            page.forEach(student -> System.out.println(student));
+            student.setStudentIdCard(studentIdCard);
+
+//            student.enrolToCourse(new Course("Computer Science", "IT"));
+//
+//            student.enrolToCourse(new Course("Amigoscode Spring Data JPA", "IT"));
+
+            student.addEnrolment(new Enrolment(student, new Course("Computer Science", "IT"),
+                    LocalDateTime.now()));
+            student.addEnrolment(new Enrolment(student, new Course("Amigoscode Spring Data JPA", "IT"),
+                    LocalDateTime.now().minusYears(1)));
+
+            studentRepository.save(student);
+
+            studentRepository.findById(1L).ifPresent(s -> {
+                System.out.println("fetch book lazy...");
+                List<Book> books = student.getBooks();
+                books.forEach(book -> {
+                    System.out.println(
+                            s.getFirstName() + "borrowed " + book.getBookName()
+                    );
+                }
+                );
+            });
+//
+//            studentIdCardRepository.findById(1L)
+//                    .ifPresent(System.out::println);
+//            studentIdCardRepository.deleteById(1L);
 
         };
     }
 
-    private static void sortAndPrint(StudentRepository studentRepository) {
-        Sort sort = Sort.by(Sort.Direction.ASC, "firstName").and(Sort.by("age").descending());
-        studentRepository.findAll(sort)
-                .forEach(student -> System.out.println(student.getFirstName()));
-    }
 
     private static void generateRandomStudent(StudentRepository studentRepository) {
         Faker faker = new Faker();
